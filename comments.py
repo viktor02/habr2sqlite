@@ -5,7 +5,7 @@ import json
 import requests
 import logging
 
-sql_worker = Sqlite3Worker("test.db")
+sql_worker = Sqlite3Worker("habr.db")
 sql_worker.execute("CREATE TABLE IF NOT EXISTS comments(id INTEGER,"
                    "parent_id INTEGER,"
                    "article INTEGER,"
