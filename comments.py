@@ -26,11 +26,13 @@ def worker(i):
             logging.critical("503 Error")
             raise SystemExit
     except:
-        with open("req_errors.txt") as file:
+        with open("req_errors.txt", "a") as file:
+            logging.critical("requests error")
             file.write(i)
         return 2
 
-    data = json.loads(r.text)
+    try: data = json.loads(r.text)
+    except: logging.warning("[{}] Json loads failed".format(i))
 
     if data['success']:
         comments = data['data']['comments']
@@ -56,15 +58,15 @@ def worker(i):
                     score,
                     message,
                     str(children),
-                    str(author))
+                    author['login'])
 
             sql_worker.execute("INSERT INTO comments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
 
         logging.info("Comments on article {} were parsed".format(i))
 
 
-min = 1
-max = 1000
+min = 494000
+max = 494452
 
 pool = ThreadPool(3)
 
