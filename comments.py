@@ -28,7 +28,7 @@ def worker(i):
     except:
         with open("req_errors.txt", "a") as file:
             logging.critical("requests error")
-            file.write(i)
+            file.write(str(i))
         return 2
 
     try: data = json.loads(r.text)

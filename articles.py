@@ -31,7 +31,7 @@ def worker(i):
             raise SystemExit
     except:
         with open("req_errors.txt") as file:
-            file.write(i)
+            file.write(str(i))
         return 2
 
     data = json.loads(r.text)
