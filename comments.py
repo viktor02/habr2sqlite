@@ -50,7 +50,7 @@ def worker(i):
             children = [children for children in current['children']]
             author = current['author']
 
-            data = (id,
+            try: data = (id,
                     parent_id,
                     article,
                     level,
@@ -58,16 +58,18 @@ def worker(i):
                     score,
                     message,
                     str(children),
-                    author['login'])
+                    str(author['login']))
+            except:
+                data = (None, None, None, None, None, None, None, None, None)
 
             sql_worker.execute("INSERT INTO comments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
 
         logging.info("Comments on article {} were parsed".format(i))
 
 
-min = 494000
+min = 494400
 max = 494452
-
+# max = 100
 pool = ThreadPool(3)
 
 start_time = datetime.now()

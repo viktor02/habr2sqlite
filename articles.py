@@ -6,19 +6,22 @@ import requests
 import logging
 
 sql_worker = Sqlite3Worker("habr.db")
-sql_worker.execute("CREATE TABLE IF NOT EXISTS articles("
-                   "id INTEGER, "
-                   "time_published "
-                   "TEXT, "
-                   "author TEXT, "
-                   "title TEXT, "
-                   "content TEXT, "
-                   "lang TEXT, "
-                   "comments_count INTEGER, "
-                   "reading_count INTEGER, "
-                   "score INTEGER, "
-                   "is_tutorial INTEGER, "
-                   "tags_string TEXT)")
+sql_worker.execute(
+"""
+CREATE TABLE "articles" (
+	"id"	INTEGER,
+	"time_published"	TEXT,
+	"author"	TEXT,
+	"title"	TEXT,
+	"content"	TEXT,
+	"lang"	TEXT,
+	"comment_count"	INTEGER,
+	"reading_count"	INTEGER,
+	"score"	INTEGER,
+	"is_tutorial"	INTEGER,
+	"tags_string"	TEXT
+)
+""")
 
 
 def worker(i):
@@ -30,8 +33,9 @@ def worker(i):
             logging.critical("503 Error")
             raise SystemExit
     except:
-        with open("req_errors.txt") as file:
-            file.write(str(i))
+        with open("req_errors.txt", "a") as file:
+            logging.critical("requests error")
+            file.write(i)
         return 2
 
     data = json.loads(r.text)
@@ -52,24 +56,24 @@ def worker(i):
         score = article['voting']['score']
 
         data = (id,
-                is_tutorial,
                 time_published,
+                author,
                 title,
                 content,
-                comments_count,
                 lang,
-                tags_string,
+                comments_count,
                 reading_count,
-                author,
-                score)
+                score,
+                is_tutorial,
+                tags_string)
 
         sql_worker.execute("INSERT INTO articles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
 
     logging.info("Comments on article {} were parsed".format(i))
 
 
-min = 490000
-max = 490920
+min = 490406
+max = 494452
 
 pool = ThreadPool(3)
 
