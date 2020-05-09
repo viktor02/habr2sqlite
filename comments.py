@@ -4,17 +4,20 @@ from datetime import datetime
 import json
 import requests
 import logging
+import argparse
 
 sql_worker = Sqlite3Worker("habr.db")
-sql_worker.execute("CREATE TABLE IF NOT EXISTS comments(id INTEGER,"
-                   "parent_id INTEGER,"
-                   "article INTEGER,"
-                   "level INTEGER,"
-                   "timePublished TEXT,"
-                   "score INTEGER,"
-                   "message TEXT,"
-                   "children TEXT,"
-                   "author TEXT)")
+sql_worker.execute("CREATE TABLE IF NOT EXISTS comments("
+                   "id              INTEGER,"
+                   "parent_id       INTEGER,"
+                   "article         INTEGER,"
+                   "level           INTEGER,"
+                   "timePublished   TEXT,"
+                   "score           INTEGER,"
+                   "message         TEXT,"
+                   "children        TEXT,"
+                   "author          TEXT)"
+                   )
 
 
 def worker(i):
@@ -25,18 +28,16 @@ def worker(i):
         if r.status_code == 503:
             logging.critical("503 Error")
             raise SystemExit
-    except:
-        with open("req_errors.txt", "a") as file:
-            logging.critical("requests error")
-            file.write(str(i))
-        return 2
+        if r.status_code == 404:
+            logging.info("Not found")
+            return 404
+    except requests.exceptions.HTTPError as err:
+        raise SystemExit(err)
 
-    try: data = json.loads(r.text)
-    except: logging.warning("[{}] Json loads failed".format(i))
+    data = json.loads(r.text)
 
-    if data['success']:
-        comments = data['data']['comments']
-
+    if data['comments']:
+        comments = data['comments']
         for comment in comments:
             current = comments[comment]
 
@@ -50,30 +51,34 @@ def worker(i):
             children = [children for children in current['children']]
             author = current['author']
 
-            try: data = (id,
-                    parent_id,
-                    article,
-                    level,
-                    time_published,
-                    score,
-                    message,
-                    str(children),
-                    str(author['login']))
+            try:
+                data = (id,
+                        parent_id,
+                        article,
+                        level,
+                        time_published,
+                        score,
+                        message,
+                        str(children),
+                        str(author['login']))
             except:
                 data = (None, None, None, None, None, None, None, None, None)
 
             sql_worker.execute("INSERT INTO comments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
 
-        logging.info("Comments on article {} were parsed".format(i))
+            logging.info("Comments on article {} were parsed".format(i))
 
 
-min = 494400
-max = 494452
-# max = 100
-pool = ThreadPool(3)
+parser = argparse.ArgumentParser(description='Habr comments parser')
+parser.add_argument('--min', action="store", dest="min", default=1, type=int)
+parser.add_argument('--max', action="store", dest="max", default=1000, type=int)
+parser.add_argument('--threads', action="store", dest="threads_count", default=3, type=int)
+args = parser.parse_args()
+
+pool = ThreadPool(args.threads_count)
 
 start_time = datetime.now()
-results = pool.map(worker, range(min, max))
+results = pool.map(worker, range(args.min, args.max))
 
 pool.close()
 pool.join()
