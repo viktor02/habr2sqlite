@@ -4,24 +4,24 @@ from datetime import datetime
 import json
 import requests
 import logging
+import argparse
 
 sql_worker = Sqlite3Worker("habr.db")
 sql_worker.execute(
-"""
-CREATE TABLE "articles" (
-	"id"	INTEGER,
-	"time_published"	TEXT,
-	"author"	TEXT,
-	"title"	TEXT,
-	"content"	TEXT,
-	"lang"	TEXT,
-	"comment_count"	INTEGER,
-	"reading_count"	INTEGER,
-	"score"	INTEGER,
-	"is_tutorial"	INTEGER,
-	"tags_string"	TEXT
-)
-""")
+    """
+CREATE TABLE IF NOT EXISTS "articles" (
+                           "id"	            INTEGER,
+                           "time_published"	TEXT,
+                           "author"	        TEXT,
+                           "title"	        TEXT,
+                           "content"	    TEXT,
+                           "lang"	        TEXT,
+                           "comment_count"	INTEGER,
+                           "reading_count"	INTEGER,
+                           "score"	        INTEGER,
+                           "is_tutorial"	INTEGER,
+                           "tags_string"	TEXT)
+    """)
 
 
 def worker(i):
@@ -32,29 +32,29 @@ def worker(i):
         if r.status_code == 503:
             logging.critical("503 Error")
             raise SystemExit
-    except:
-        with open("req_errors.txt", "a") as file:
-            logging.critical("requests error")
-            file.write(i)
-        return 2
+        if r.status_code != 200:
+            logging.info("Not found or in drafts")
+            return 404
+    except requests.exceptions.HTTPError as err:
+        raise SystemExit(err)
 
     data = json.loads(r.text)
 
-    if data['success']:
-        article = data['data']['article']
+    article = data['data']
 
-        id = article['id']
-        is_tutorial = article['is_tutorial']
-        time_published = article['time_published']
-        comments_count = article['comments_count']
-        lang = article['lang']
-        tags_string = article['tags_string']
-        title = article['title']
-        content = article['text_html']
-        reading_count = article['reading_count']
-        author = article['author']['login']
-        score = article['voting']['score']
+    id = article['id']
+    is_tutorial = article['is_tutorial']
+    time_published = article['time_published']
+    comments_count = article['comments_count']
+    lang = article['lang']
+    tags_string = article['tags_string']
+    title = article['title']
+    content = article['text_html']
+    reading_count = article['reading_count']
+    author = article['author']['login']
+    score = article['voting']['score']
 
+    try:
         data = (id,
                 time_published,
                 author,
@@ -66,19 +66,24 @@ def worker(i):
                 score,
                 is_tutorial,
                 tags_string)
+    except:
+        data = (None, None, None, None, None, None, None, None, None, None, None)
 
-        sql_worker.execute("INSERT INTO articles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+    sql_worker.execute("INSERT INTO articles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
 
     logging.info("Comments on article {} were parsed".format(i))
 
 
-min = 490406
-max = 494452
+parser = argparse.ArgumentParser(description='Habr articles parser. Specify the maximum and minimum number of articles.')
+parser.add_argument('--min', action="store", dest="min", required=True, type=int)
+parser.add_argument('--max', action="store", dest="max", required=True, type=int)
+parser.add_argument('--threads', action="store", dest="threads_count", help="number of threads", default=3, type=int)
+args = parser.parse_args()
 
-pool = ThreadPool(3)
+pool = ThreadPool(args.threads_count)
 
 start_time = datetime.now()
-results = pool.map(worker, range(min, max))
+results = pool.map(worker, range(args.min, args.max))
 
 pool.close()
 pool.join()

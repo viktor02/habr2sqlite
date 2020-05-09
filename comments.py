@@ -28,51 +28,49 @@ def worker(i):
         if r.status_code == 503:
             logging.critical("503 Error")
             raise SystemExit
-        if r.status_code == 404:
-            logging.info("Not found")
+        if r.status_code != 200:
+            logging.info("Not found or in drafts")
             return 404
     except requests.exceptions.HTTPError as err:
         raise SystemExit(err)
 
     data = json.loads(r.text)
+    comments = data['comments']
+    for comment in comments:
+        current = comments[comment]
 
-    if data['comments']:
-        comments = data['comments']
-        for comment in comments:
-            current = comments[comment]
+        id = current['id']
+        parent_id = current['parentId']
+        article = i
+        level = current['level']
+        time_published = current['timePublished']
+        score = current['score']
+        message = current['message']
+        children = [children for children in current['children']]
+        author = current['author']
 
-            id = current['id']
-            parent_id = current['parentId']
-            article = i
-            level = current['level']
-            time_published = current['timePublished']
-            score = current['score']
-            message = current['message']
-            children = [children for children in current['children']]
-            author = current['author']
+        try:
+            data = (id,
+                    parent_id,
+                    article,
+                    level,
+                    time_published,
+                    score,
+                    message,
+                    str(children),
+                    str(author['login']))
+        except:
+            data = (None, None, None, None, None, None, None, None, None)
 
-            try:
-                data = (id,
-                        parent_id,
-                        article,
-                        level,
-                        time_published,
-                        score,
-                        message,
-                        str(children),
-                        str(author['login']))
-            except:
-                data = (None, None, None, None, None, None, None, None, None)
+        sql_worker.execute("INSERT INTO comments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
 
-            sql_worker.execute("INSERT INTO comments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
-
-            logging.info("Comments on article {} were parsed".format(i))
+        logging.info("Comments on article {} were parsed".format(i))
 
 
-parser = argparse.ArgumentParser(description='Habr comments parser')
-parser.add_argument('--min', action="store", dest="min", default=1, type=int)
-parser.add_argument('--max', action="store", dest="max", default=1000, type=int)
-parser.add_argument('--threads', action="store", dest="threads_count", default=3, type=int)
+parser = argparse.ArgumentParser(description='Habr comments parser. Specify the maximum and minimum number of articles.')
+parser.add_argument('--min', action="store", dest="min", required=True, type=int)
+parser.add_argument('--max', action="store", dest="max", required=True, type=int)
+parser.add_argument('--threads', action="store", dest="threads_count", help="number of threads", default=3, type=int)
 args = parser.parse_args()
 
 pool = ThreadPool(args.threads_count)
