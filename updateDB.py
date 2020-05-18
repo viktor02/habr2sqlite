@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import subprocess
+import sys
 
 import requests
 
@@ -40,8 +41,8 @@ lastPostHabr = getLastPostOnHabr()
 
 print("min={} max={}".format(lastPostBase, lastPostHabr))
 
-argsArticles = "python3 articles.py --min {} --max {}".format(lastPostBase, lastPostHabr)
-argsComments = "python3 comments.py --min {} --max {}".format(lastPostBase, lastPostHabr)
+argsArticles = "{} articles.py --min {} --max {}".format(sys.executable, lastPostBase, lastPostHabr)
+argsComments = "{} comments.py --min {} --max {}".format(sys.executable, lastPostBase, lastPostHabr)
 
 subprocess.call(argsArticles)
 print("Articles downloaded")
