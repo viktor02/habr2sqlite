@@ -28,10 +28,13 @@ def getLastPostInBase():
     """ Get last post in database """
     query = "SELECT max(id) from articles"
 
-    conn = sqlite3.connect('habr.db')
-    c = conn.cursor()
-    c.execute(query)
-    lastPostInBase = c.fetchone()[0]
+    try:
+        conn = sqlite3.connect('habr.db')
+        c = conn.cursor()
+        c.execute(query)
+        lastPostInBase = c.fetchone()[0]
+    except sqlite3.OperationalError:
+        return 0
 
     return lastPostInBase
 
