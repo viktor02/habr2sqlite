@@ -1,5 +1,5 @@
 # habr2sqlite
-![](https://habrastorage.org/webt/hd/58/iw/hd58iwojln20-01__s9u8yfjovy.gif)
+![](img/hello.gif)
 
  Парсер Хабрахабра в базу данных SQLite3
 ### Требования
