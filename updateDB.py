@@ -8,7 +8,7 @@ import requests
 
 def getLastPostOnHabr():
     """ Get last post on Habr """
-    url = "https://m.habr.com/kek/v1/articles/"
+    url = "https://m.habr.com/kek/v2/articles/"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:76.0) Gecko/20100101 Firefox/76.0'
     }
@@ -44,8 +44,10 @@ lastPostHabr = getLastPostOnHabr()
 
 print("min={} max={}".format(lastPostBase, lastPostHabr))
 
-argsArticles = "{} articles.py --min {} --max {}".format(sys.executable, lastPostBase, lastPostHabr)
-argsComments = "{} comments.py --min {} --max {}".format(sys.executable, lastPostBase, lastPostHabr)
+argsArticles = "{} articles.py --min {} --max {}".format(
+    sys.executable, lastPostBase, lastPostHabr)
+argsComments = "{} comments.py --min {} --max {}".format(
+    sys.executable, lastPostBase, lastPostHabr)
 
 subprocess.call(argsArticles)
 print("Articles downloaded")

@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS "articles" (
 
 
 def worker(i):
-    url = "https://m.habr.com/kek/v1/articles/{}/?fl=ru%2Cen&hl=ru".format(i)
+    url = "https://m.habr.com/kek/v2/articles/{}/?fl=ru%2Cen&hl=ru".format(i)
 
     try:
         r = requests.get(url)
@@ -38,21 +38,19 @@ def worker(i):
     except requests.exceptions.HTTPError as err:
         raise SystemExit(err)
 
-    data = json.loads(r.text)
-
-    article = data['data']
+    article = json.loads(r.text)
 
     id = article['id']
-    is_tutorial = article['is_tutorial']
-    time_published = article['time_published']
-    comments_count = article['comments_count']
+    is_tutorial = True if 'tutorial' in article['postLabels'] else False
+    time_published = article['timePublished']
+    comments_count = article['statistics']['commentsCount']
     lang = article['lang']
-    tags_string = article['tags_string']
-    title = article['title']
-    content = article['text_html']
-    reading_count = article['reading_count']
+    tags_string = ','.join(tuple(tag['titleHtml'] for tag in article['tags']))
+    title = article['titleHtml']
+    content = article['textHtml']
+    reading_count = article['statistics']['readingCount']
     author = article['author']['login']
-    score = article['voting']['score']
+    score = article['statistics']['score']
 
     try:
         data = (id,
@@ -67,17 +65,35 @@ def worker(i):
                 is_tutorial,
                 tags_string)
     except:
-        data = (None, None, None, None, None, None, None, None, None, None, None)
+        data = (None, None, None, None, None,
+                None, None, None, None, None, None)
 
-    sql_worker.execute("INSERT INTO articles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+    sql_worker.execute(
+        "INSERT INTO articles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
 
     logging.info("Comments on article {} were parsed".format(i))
 
 
-parser = argparse.ArgumentParser(description='Habr articles parser. Specify the maximum and minimum number of articles.')
-parser.add_argument('--min', action="store", dest="min", required=True, type=int)
-parser.add_argument('--max', action="store", dest="max", required=True, type=int)
-parser.add_argument('--threads', action="store", dest="threads_count", help="number of threads", default=3, type=int)
+parser = argparse.ArgumentParser(
+    description='Habr articles parser. Specify the maximum and minimum number of articles.')
+
+parser.add_argument('--min',
+                    action="store",
+                    dest="min",
+                    required=True,
+                    type=int)
+parser.add_argument('--max', 
+                    action="store",
+                    dest="max", 
+                    required=True, 
+                    type=int)
+parser.add_argument('--threads', '-t', 
+                    action="store", 
+                    dest="threads_count",
+                    help="number of threads", 
+                    default=3, 
+                    type=int)
+
 args = parser.parse_args()
 
 pool = ThreadPool(args.threads_count)
